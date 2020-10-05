@@ -26,11 +26,13 @@ func check(e error) {
 		panic(e)
 	}
 }
-func CreateNewRotor() {
+
+func CreateNewRotor(notch int) {
 	fmt.Println("Creating new rotor...")
 
 	r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var rotor Rotor
+	rotor.Notch = notch
 	for i := range rotor.Rotor {
 		rotor.Rotor[i] = -1
 	}
@@ -59,32 +61,38 @@ func CreateNewRotor() {
 		fmt.Print(rotor.Rotor[n], " ")
 	}
 	fmt.Println()
-	WriteRotor(rotor)
+	AppendRotor(rotor)
 }
 
-func WriteRotor(rotor Rotor) {
+func AppendRotor(rotor Rotor) {
+	rotors := LoadRotors()
+	newid := fmt.Sprintf("R%v", len(rotors))
+	rotors[newid] = rotor
+
 	var outbuffer bytes.Buffer
 	encoder := gob.NewEncoder(&outbuffer)
 
-	err := encoder.Encode(rotor)
+	err := encoder.Encode(rotors)
 	check(err)
 
 	f, err := os.Create("c:\\temp\\rotors.dat")
 	check(err)
 	defer f.Close()
 
-	n, err := f.Write(outbuffer.Bytes())
+	_, err = f.Write(outbuffer.Bytes())
 	check(err)
-	fmt.Printf("Wrote Rotor with %d bytes\n", n)
+	// fmt.Printf("Wrote Rotor with %d bytes\n", n)
 }
 
-func LoadRotor() {
+func LoadRotors() map[string]Rotor {
+	var rotors map[string]Rotor
 	rotorData, err := os.Open("c:\\temp\\rotors.dat")
-	check(err)
-
-	decoder := gob.NewDecoder(rotorData)
-	var rotor Rotor
-	err = decoder.Decode(&rotor)
-
-	fmt.Println(rotor)
+	if err == nil {
+		decoder := gob.NewDecoder(rotorData)
+		err = decoder.Decode(&rotors)
+		// fmt.Println(rotors)
+	} else {
+		rotors = make(map[string]Rotor)
+	}
+	return rotors
 }
