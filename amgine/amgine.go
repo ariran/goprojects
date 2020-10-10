@@ -8,7 +8,8 @@ import (
 )
 
 type AppConfig struct {
-	Rotors []RotorsConfig
+	Rotors       []RotorsConfig
+	ReturnRotors []RotorsConfig
 }
 
 type RotorsConfig struct {
@@ -19,7 +20,12 @@ type RotorsConfig struct {
 
 func (c AppConfig) String() string {
 	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("Rotors:\n"))
 	for _, r := range c.Rotors {
+		buffer.WriteString(fmt.Sprintf("%v", r.String()))
+	}
+	buffer.WriteString(fmt.Sprintf("ReturnRotors:\n"))
+	for _, r := range c.ReturnRotors {
 		buffer.WriteString(fmt.Sprintf("%v", r.String()))
 	}
 	return buffer.String()
@@ -45,12 +51,15 @@ func loadConfiguration() {
 		panic(err)
 	}
 
+	fmt.Println("Loaded Configuration:")
 	fmt.Println(configuration)
 }
 
 func main() {
 	loadConfiguration()
+	// fmt.Println()
 	// rotor.CreateNewRotor()
-	// rotors := rotor.LoadRotors()
-	// fmt.Println(rotors)
+	// rotor.CreateNewReturnRotor()
+	// rotorStore := rotor.LoadRotorStore()
+	// fmt.Println(rotorStore)
 }
