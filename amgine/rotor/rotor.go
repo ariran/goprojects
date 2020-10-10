@@ -138,10 +138,13 @@ func AppendRotor(rotor Rotor, isReturnRotor bool) {
 
 func LoadRotorStore() RotorStore {
 	var rotorStore RotorStore
-	rotorData, err := os.Open("c:\\temp\\rotorStore.dat")
+	rotorData, err := os.Open(os.Getenv("AMG_ROTORSTORE"))
 	if err == nil {
 		decoder := gob.NewDecoder(rotorData)
 		err = decoder.Decode(&rotorStore)
+		if err != nil {
+			fmt.Println("Error opening rotor store:", err)
+		}
 	} else {
 		rotors := make(map[string]Rotor)
 		returnRotors := make(map[string]Rotor)
