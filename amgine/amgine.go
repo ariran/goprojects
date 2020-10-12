@@ -4,6 +4,7 @@ import (
 	"amgine/rotor"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -18,6 +19,12 @@ type RotorsConfig struct {
 	Seq  int
 	Rid  string
 	Curr int
+}
+
+type Parameters struct {
+	ConfigFile string
+	Command    string
+	Target     string
 }
 
 func (c AppConfig) String() string {
@@ -35,7 +42,46 @@ func (c RotorsConfig) String() string {
 	return fmt.Sprintf("Seq: %v, Rid: %v, Curr: %v\n", c.Seq, c.Rid, c.Curr)
 }
 
+func (p Parameters) String() string {
+	return fmt.Sprintf("ConfigFile: %v, Command: %v, Target: %v", p.ConfigFile, p.Command, p.Target)
+}
+
+func getParameters() (Parameters, error) {
+	var parameters Parameters
+	index := 1
+	if len(os.Args) > 1 {
+		if os.Args[index] == "-f" && len(os.Args) > 2 {
+			index++
+			parameters.ConfigFile = os.Args[index]
+			index++
+		}
+		if len(os.Args) > index {
+			if os.Args[index] == "showconfig" ||
+				os.Args[index] == "showstore" ||
+				os.Args[index] == "newrotor" ||
+				os.Args[index] == "newreturnrotor" {
+				parameters.Command = os.Args[index]
+				return parameters, nil
+			} else if len(os.Args) > index+1 {
+				if os.Args[index] == "encrypt" {
+					parameters.Command = "encrypt"
+					index++
+					parameters.Target = os.Args[index]
+					return parameters, nil
+				} else if os.Args[index] == "decrypt" {
+					parameters.Command = "decrypt"
+					index++
+					parameters.Target = os.Args[index]
+					return parameters, nil
+				}
+			}
+		}
+	}
+	return parameters, errors.New("invalid command line")
+}
+
 func loadConfiguration() AppConfig {
+	// TODO: Use override config file (-f switch)
 	configFile, err := os.Open(os.Getenv("AMG_CONFIGFILE"))
 	if err != nil {
 		fmt.Println("Could not open configuration file!")
@@ -66,17 +112,30 @@ func createTestFile() {
 }
 
 func main() {
-	// createTestFile()
+	parameters, err := getParameters()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 
 	configuration := loadConfiguration()
-	// fmt.Println(configuration)
-
-	// rotor.CreateNewRotor()
-	// rotor.CreateNewReturnRotor()
-
 	rotorStore := rotor.LoadRotorStore()
-	// fmt.Println(rotorStore)
 
-	// TransformFile("C:\\Temp\\input.txt", ENCRYPT, configuration, rotorStore)
-	TransformFile("C:\\Temp\\input.txt.amg", DECRYPT, configuration, rotorStore)
+	if parameters.Command == "showconfiguration" {
+		fmt.Println(configuration)
+	} else if parameters.Command == "showstore" {
+		fmt.Println(rotorStore)
+	} else if parameters.Command == "newrotor" {
+		rotor.CreateNewRotor()
+		fmt.Println("Rotor created.")
+	} else if parameters.Command == "newreturnrotor" {
+		rotor.CreateNewReturnRotor()
+		fmt.Println("Return rotor created.")
+	} else if parameters.Command == "encrypt" {
+		TransformFile(parameters.Target, ENCRYPT, configuration, rotorStore)
+		fmt.Println("Encryption done.")
+	} else if parameters.Command == "decrypt" {
+		TransformFile(parameters.Target, DECRYPT, configuration, rotorStore)
+		fmt.Println("Decryption done.")
+	}
 }

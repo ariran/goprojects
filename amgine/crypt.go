@@ -47,6 +47,7 @@ func TransformFile(inputFileName string, mode int, configuration AppConfig, roto
 }
 
 func encrypt(inByte byte, configuration AppConfig, rotorStore rotor.RotorStore) byte {
+	// TODO: Increment notch !!
 	outSlot := int(inByte)
 	for i := range configuration.Rotors {
 		outSlot = rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[outSlot]
@@ -66,6 +67,7 @@ func encrypt(inByte byte, configuration AppConfig, rotorStore rotor.RotorStore) 
 }
 
 func decrypt(inByte byte, configuration AppConfig, rotorStore rotor.RotorStore) byte {
+	// TODO: Increment notch !!
 	outSlot := int(inByte)
 	for i := range configuration.Rotors {
 		outSlot = rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[outSlot]
