@@ -56,20 +56,16 @@ func getParameters() (Parameters, error) {
 			index++
 		}
 		if len(os.Args) > index {
-			if os.Args[index] == "showconfig" ||
+			if os.Args[index] == "help" ||
+				os.Args[index] == "showconfig" ||
 				os.Args[index] == "showstore" ||
 				os.Args[index] == "newrotor" ||
 				os.Args[index] == "newreturnrotor" {
 				parameters.Command = os.Args[index]
 				return parameters, nil
 			} else if len(os.Args) > index+1 {
-				if os.Args[index] == "encrypt" {
-					parameters.Command = "encrypt"
-					index++
-					parameters.Target = os.Args[index]
-					return parameters, nil
-				} else if os.Args[index] == "decrypt" {
-					parameters.Command = "decrypt"
+				if os.Args[index] == "transform" {
+					parameters.Command = os.Args[index]
 					index++
 					parameters.Target = os.Args[index]
 					return parameters, nil
@@ -104,11 +100,31 @@ func loadConfiguration() AppConfig {
 	return configuration
 }
 
+func createRotors(configuration AppConfig, rotorStore rotor.RotorStore) []rotor.Rotor {
+	rotors := make([]rotor.Rotor, len(configuration.Rotors)+1)
+
+	for i, r := range configuration.Rotors {
+		r1 := rotorStore.Rotors[r.Rid]
+		r2 := rotor.Rotor{r1.Slots, r1.Notch, r1.Current}
+		rotors[i] = r2
+	}
+
+	rr1 := rotorStore.ReturnRotors[configuration.ReturnRotor.Rid]
+	rr := rotor.Rotor{rr1.Slots, rr1.Notch, rr1.Current}
+	rotors[len(rotors)-1] = rr
+
+	return rotors
+}
+
 func createTestFile() {
 	outputData, _ := os.Create("C:\\Temp\\testinput.dat")
 	defer outputData.Close()
 	fileBytes := []byte{5, 8, 9}
 	outputData.Write(fileBytes)
+}
+
+func printHelp() {
+	fmt.Println("Help not implemented.")
 }
 
 func main() {
@@ -120,8 +136,11 @@ func main() {
 
 	configuration := loadConfiguration()
 	rotorStore := rotor.LoadRotorStore()
+	rotors := createRotors(configuration, rotorStore)
 
-	if parameters.Command == "showconfiguration" {
+	if parameters.Command == "help" {
+		printHelp()
+	} else if parameters.Command == "showconfiguration" {
 		fmt.Println(configuration)
 	} else if parameters.Command == "showstore" {
 		fmt.Println(rotorStore)
@@ -131,11 +150,8 @@ func main() {
 	} else if parameters.Command == "newreturnrotor" {
 		rotor.CreateNewReturnRotor()
 		fmt.Println("Return rotor created.")
-	} else if parameters.Command == "encrypt" {
-		TransformFile(parameters.Target, ENCRYPT, configuration, rotorStore)
-		fmt.Println("Encryption done.")
-	} else if parameters.Command == "decrypt" {
-		TransformFile(parameters.Target, DECRYPT, configuration, rotorStore)
-		fmt.Println("Decryption done.")
+	} else if parameters.Command == "transform" {
+		TransformFile(parameters.Target, rotors)
+		fmt.Println("Transformation done.")
 	}
 }

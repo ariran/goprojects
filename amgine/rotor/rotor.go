@@ -26,6 +26,21 @@ func (r Rotor) String() string {
 	return fmt.Sprintf("Slots: %v\nNotch: %v", r.Slots, r.Notch)
 }
 
+func (r *Rotor) IncrementCurrent() {
+	r.Current++
+	if r.Current >= RotorLength {
+		r.Current = 0
+	}
+}
+
+func (r *Rotor) Rotate() {
+	last := r.Slots[len(r.Slots)-1]
+	for i := len(r.Slots) - 1; i > 0; i-- {
+		r.Slots[i] = r.Slots[i-1]
+	}
+	r.Slots[0] = last
+}
+
 func (s RotorStore) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintf("Rotors:\n"))

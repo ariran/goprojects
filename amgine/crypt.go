@@ -7,15 +7,8 @@ import (
 	"strings"
 )
 
-const (
-	// ENCRYPT ...
-	ENCRYPT = iota
-	// DECRYPT ...
-	DECRYPT = iota
-)
-
 // TransformFile ...
-func TransformFile(inputFileName string, mode int, configuration AppConfig, rotorStore rotor.RotorStore) {
+func TransformFile(inputFileName string, rotors []rotor.Rotor) {
 	inputData, err := os.Open(inputFileName)
 	defer inputData.Close()
 
@@ -29,11 +22,7 @@ func TransformFile(inputFileName string, mode int, configuration AppConfig, roto
 				fileBytes := make([]byte, 1)
 				n, _ := inputData.Read(fileBytes)
 				if n > 0 {
-					if mode == DECRYPT {
-						fileBytes[0] = decrypt(fileBytes[0], configuration, rotorStore)
-					} else {
-						fileBytes[0] = encrypt(fileBytes[0], configuration, rotorStore)
-					}
+					fileBytes[0] = transform(fileBytes[0], rotors)
 					outputData.Write(fileBytes)
 				} else {
 					break
@@ -46,49 +35,39 @@ func TransformFile(inputFileName string, mode int, configuration AppConfig, roto
 	}
 }
 
-func encrypt(inByte byte, configuration AppConfig, rotorStore rotor.RotorStore) byte {
-	// TODO: Increment notch !!
+func transform(inByte byte, rotors []rotor.Rotor) byte {
 	outSlot := int(inByte)
-	for i := range configuration.Rotors {
-		outSlot = rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[outSlot]
+	for i, rotor := range rotors {
+		if i < len(rotors)-1 {
+			outSlot = rotor.Slots[outSlot]
+		}
 	}
 
-	outSlot = rotorStore.ReturnRotors[configuration.ReturnRotor.Rid].Slots[outSlot]
+	outSlot = rotors[len(rotors)-1].Slots[outSlot]
 
-	for i := len(configuration.Rotors) - 1; i >= 0; i-- {
-		for n := range rotorStore.Rotors[configuration.Rotors[i].Rid].Slots {
-			if outSlot == rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[n] {
+	for i := len(rotors) - 2; i >= 0; i-- {
+		for n := range rotors[i].Slots {
+			if outSlot == rotors[i].Slots[n] {
 				outSlot = n
 				break
 			}
 		}
 	}
+
+	spinRotors(rotors)
 	return byte(outSlot)
 }
 
-func decrypt(inByte byte, configuration AppConfig, rotorStore rotor.RotorStore) byte {
-	// TODO: Increment notch !!
-	outSlot := int(inByte)
-	for i := range configuration.Rotors {
-		outSlot = rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[outSlot]
-	}
+func spinRotors(rotors []rotor.Rotor) {
+	rotorIndex := 0
+	rotors[rotorIndex].IncrementCurrent()
+	rotors[rotorIndex].Rotate()
 
-	for n := range rotorStore.ReturnRotors[configuration.ReturnRotor.Rid].Slots {
-		if outSlot == rotorStore.ReturnRotors[configuration.ReturnRotor.Rid].Slots[n] {
-			outSlot = n
-			break
-		}
+	for rotors[rotorIndex].Current == rotors[rotorIndex].Notch && rotorIndex < len(rotors)-1 {
+		rotorIndex++
+		rotors[rotorIndex].IncrementCurrent()
+		rotors[rotorIndex].Rotate()
 	}
-
-	for i := len(configuration.Rotors) - 1; i >= 0; i-- {
-		for n := range rotorStore.Rotors[configuration.Rotors[i].Rid].Slots {
-			if outSlot == rotorStore.Rotors[configuration.Rotors[i].Rid].Slots[n] {
-				outSlot = n
-				break
-			}
-		}
-	}
-	return byte(outSlot)
 }
 
 func getOutputFileName(inputFileName string) string {
