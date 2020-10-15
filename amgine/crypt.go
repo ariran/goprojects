@@ -2,13 +2,15 @@ package main
 
 import (
 	"amgine/rotor"
+	"amgine/util"
 	"fmt"
 	"os"
 	"strings"
 )
 
 // TransformFile ...
-func TransformFile(inputFileName string, rotors []rotor.Rotor) {
+func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) {
+	inputFileName := parameters.Target
 	inputData, err := os.Open(inputFileName)
 	defer inputData.Close()
 

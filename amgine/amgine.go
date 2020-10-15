@@ -2,7 +2,7 @@ package main
 
 import (
 	"amgine/rotor"
-	"bytes"
+	"amgine/util"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,49 +10,17 @@ import (
 	"sort"
 )
 
-type AppConfig struct {
-	Rotors      []RotorsConfig
-	ReturnRotor RotorsConfig
-}
-
-type RotorsConfig struct {
-	Seq  int
-	Rid  string
-	Curr int
-}
-
-type Parameters struct {
-	ConfigFile string
-	Command    string
-	Target     string
-}
-
-func (c AppConfig) String() string {
-	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("Rotors:\n"))
-	for _, r := range c.Rotors {
-		buffer.WriteString(fmt.Sprintf("%v", r.String()))
-	}
-	buffer.WriteString(fmt.Sprintf("ReturnRotor:\n"))
-	buffer.WriteString(fmt.Sprintf("%v", c.ReturnRotor.String()))
-	return buffer.String()
-}
-
-func (c RotorsConfig) String() string {
-	return fmt.Sprintf("Seq: %v, Rid: %v, Curr: %v\n", c.Seq, c.Rid, c.Curr)
-}
-
-func (p Parameters) String() string {
-	return fmt.Sprintf("ConfigFile: %v, Command: %v, Target: %v", p.ConfigFile, p.Command, p.Target)
-}
-
-func getParameters() (Parameters, error) {
-	var parameters Parameters
+func getParameters() (util.Parameters, error) {
+	var parameters util.Parameters
 	index := 1
 	if len(os.Args) > 1 {
 		if os.Args[index] == "-f" && len(os.Args) > 2 {
 			index++
 			parameters.ConfigFile = os.Args[index]
+			index++
+		} else if os.Args[index] == "-s" && len(os.Args) > 2 {
+			index++
+			parameters.RotorStore = os.Args[index]
 			index++
 		}
 		if len(os.Args) > index {
@@ -76,7 +44,7 @@ func getParameters() (Parameters, error) {
 	return parameters, errors.New("invalid command line")
 }
 
-func loadConfiguration() AppConfig {
+func loadConfiguration() util.AppConfig {
 	// TODO: Use override config file (-f switch)
 	configFile, err := os.Open(os.Getenv("AMG_CONFIGFILE"))
 	if err != nil {
@@ -86,7 +54,7 @@ func loadConfiguration() AppConfig {
 	defer configFile.Close()
 
 	decoder := json.NewDecoder(configFile)
-	configuration := AppConfig{}
+	configuration := util.AppConfig{}
 	err = decoder.Decode(&configuration)
 	if err != nil {
 		fmt.Println("Could not read configuration!")
@@ -100,7 +68,7 @@ func loadConfiguration() AppConfig {
 	return configuration
 }
 
-func createRotors(configuration AppConfig, rotorStore rotor.RotorStore) []rotor.Rotor {
+func createRotors(configuration util.AppConfig, rotorStore rotor.RotorStore) []rotor.Rotor {
 	rotors := make([]rotor.Rotor, len(configuration.Rotors)+1)
 
 	for i, r := range configuration.Rotors {
@@ -124,7 +92,26 @@ func createTestFile() {
 }
 
 func printHelp() {
-	fmt.Println("Help not implemented.")
+	helpString := "Amgine encrypts or decrypts the given file.\n\n" +
+		"  Usage: amgine [options] {command} [file]\n\n" +
+		"  Options:\n" +
+		"     -f <optionsfile>  - Makes amgine use the given options file instead of the one\n" +
+		"                         defined by the environment variable AMG_CONFIGFILE.\n" +
+		"     -s <rotorstore>   - Makes amgine use the given file as active rotor store instead\n" +
+		"                         of the one defined by the environment variable AMG_ROTORSTORE.\n\n" +
+		"  Commands:" +
+		"     help              - Show this help.\n" +
+		"     showconfig        - Show configuration as defined in the given configuration file\n" +
+		"                         or in the one defined by the environment variable AMG_CONFIGFILE.\n" +
+		"     showstore         - Shows the rotors in the currently active rotor store.\n" +
+		"     newrotor          - Creates a new rotor and stores it in the rotor store.\n" +
+		"     newreturnrotor    - Creates a new rotor and stores it in the rotor store.\n" +
+		"     transform <file>  - Encrypts the given file if the file name does not end with .amg.\n" +
+		"                         Decrypts the given file if the file name ends with .amg.\n\n" +
+		"  Environment variables:\n" +
+		"     AMG_CONFIGFILE    - Specifies the default configuration file.\n" +
+		"     AMG_ROTORSTORE    - Specifies the active rotor store.\n"
+	fmt.Println(helpString)
 }
 
 func main() {
@@ -134,24 +121,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	configuration := loadConfiguration()
-	rotorStore := rotor.LoadRotorStore()
-	rotors := createRotors(configuration, rotorStore)
-
 	if parameters.Command == "help" {
 		printHelp()
-	} else if parameters.Command == "showconfiguration" {
+		os.Exit(1)
+	}
+
+	configuration := loadConfiguration()
+	rotorStore := rotor.LoadRotorStore(parameters)
+	rotors := createRotors(configuration, rotorStore)
+
+	if parameters.Command == "showconfig" {
 		fmt.Println(configuration)
 	} else if parameters.Command == "showstore" {
 		fmt.Println(rotorStore)
 	} else if parameters.Command == "newrotor" {
-		rotor.CreateNewRotor()
+		rotor.CreateNewRotor(parameters)
 		fmt.Println("Rotor created.")
 	} else if parameters.Command == "newreturnrotor" {
-		rotor.CreateNewReturnRotor()
+		rotor.CreateNewReturnRotor(parameters)
 		fmt.Println("Return rotor created.")
 	} else if parameters.Command == "transform" {
-		TransformFile(parameters.Target, rotors)
+		TransformFile(parameters, rotors)
 		fmt.Println("Transformation done.")
 	}
 }

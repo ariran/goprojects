@@ -1,6 +1,7 @@
 package rotor
 
 import (
+	"amgine/util"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -18,6 +19,7 @@ type Rotor struct {
 }
 
 type RotorStore struct {
+	FileName     string
 	Rotors       map[string]Rotor
 	ReturnRotors map[string]Rotor
 }
@@ -60,7 +62,8 @@ func check(e error) {
 	}
 }
 
-func CreateNewRotor() {
+// CreateNewRotor ...
+func CreateNewRotor(parameters util.Parameters) {
 	fmt.Println("Creating new Rotor...")
 
 	r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -94,10 +97,11 @@ func CreateNewRotor() {
 		fmt.Print(rotor.Slots[n], " ")
 	}
 	fmt.Println()
-	AppendRotor(rotor, false)
+	AppendRotor(rotor, false, parameters)
 }
 
-func CreateNewReturnRotor() {
+// CreateNewReturnRotor ...
+func CreateNewReturnRotor(parameters util.Parameters) {
 	fmt.Println("Creating new ReturnRotor...")
 
 	r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -124,11 +128,12 @@ func CreateNewReturnRotor() {
 		fmt.Print(rotor.Slots[n], " ")
 	}
 	fmt.Println()
-	AppendRotor(rotor, true)
+	AppendRotor(rotor, true, parameters)
 }
 
-func AppendRotor(rotor Rotor, isReturnRotor bool) {
-	rotorStore := LoadRotorStore()
+// AppendRotor ...
+func AppendRotor(rotor Rotor, isReturnRotor bool, parameters util.Parameters) {
+	rotorStore := LoadRotorStore(parameters)
 	if isReturnRotor {
 		newid := fmt.Sprintf("E%v", len(rotorStore.ReturnRotors))
 		rotorStore.ReturnRotors[newid] = rotor
@@ -143,7 +148,7 @@ func AppendRotor(rotor Rotor, isReturnRotor bool) {
 	err := encoder.Encode(rotorStore)
 	check(err)
 
-	f, err := os.Create("c:\\temp\\rotorStore.dat")
+	f, err := os.Create(rotorStore.FileName)
 	check(err)
 	defer f.Close()
 
@@ -151,9 +156,14 @@ func AppendRotor(rotor Rotor, isReturnRotor bool) {
 	check(err)
 }
 
-func LoadRotorStore() RotorStore {
-	var rotorStore RotorStore
-	rotorData, err := os.Open(os.Getenv("AMG_ROTORSTORE"))
+// LoadRotorStore ...
+func LoadRotorStore(parameters util.Parameters) RotorStore {
+	rotorStoreFileName := parameters.RotorStore
+	if len(rotorStoreFileName) == 0 {
+		rotorStoreFileName = os.Getenv("AMG_ROTORSTORE")
+	}
+	rotorStore := RotorStore{FileName: rotorStoreFileName}
+	rotorData, err := os.Open(rotorStoreFileName)
 	if err == nil {
 		decoder := gob.NewDecoder(rotorData)
 		err = decoder.Decode(&rotorStore)
@@ -163,7 +173,7 @@ func LoadRotorStore() RotorStore {
 	} else {
 		rotors := make(map[string]Rotor)
 		returnRotors := make(map[string]Rotor)
-		rotorStore = RotorStore{rotors, returnRotors}
+		rotorStore = RotorStore{rotorStoreFileName, rotors, returnRotors}
 	}
 	return rotorStore
 }
