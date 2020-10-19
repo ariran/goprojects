@@ -14,14 +14,16 @@ func getParameters() (util.Parameters, error) {
 	var parameters util.Parameters
 	index := 1
 	if len(os.Args) > 1 {
-		if os.Args[index] == "-f" && len(os.Args) > 2 {
-			index++
-			parameters.ConfigFile = os.Args[index]
-			index++
-		} else if os.Args[index] == "-s" && len(os.Args) > 2 {
-			index++
-			parameters.RotorStore = os.Args[index]
-			index++
+		for os.Args[index][0:1] == "-" {
+			if os.Args[index] == "-f" && len(os.Args) > 2 {
+				index++
+				parameters.ConfigFile = os.Args[index]
+				index++
+			} else if os.Args[index] == "-s" && len(os.Args) > 2 {
+				index++
+				parameters.RotorStore = os.Args[index]
+				index++
+			}
 		}
 		if len(os.Args) > index {
 			if os.Args[index] == "help" ||
