@@ -3,29 +3,41 @@ package main
 import (
 	"amgine/rotor"
 	"amgine/util"
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // TransformFile ...
-func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) {
+func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) bool {
 	inputFileName := parameters.Target
-	inputData, err := os.Open(inputFileName)
-	defer inputData.Close()
+	inputFile, err := os.Open(inputFileName)
+	defer inputFile.Close()
 
 	if err == nil {
-		outputFileName := getOutputFileName(inputFileName)
-		outputData, err := os.Create(outputFileName)
-		defer outputData.Close()
+		outputFileName := getOutputFileName(inputFileName, inputFile, rotors, parameters)
+		outputFile, err := os.Create(outputFileName)
+		defer outputFile.Close()
 
 		if err == nil {
+			fileBytes := make([]byte, 1)
+			if parameters.EncryptFilename {
+				for _, c := range inputFileName {
+					fileBytes[0] = transform(byte(c), rotors)
+					outputFile.Write(fileBytes)
+				}
+				fileBytes[0] = transform(byte('\x00'), rotors)
+				outputFile.Write(fileBytes)
+			}
 			for {
-				fileBytes := make([]byte, 1)
-				n, _ := inputData.Read(fileBytes)
+				n, _ := inputFile.Read(fileBytes)
 				if n > 0 {
 					fileBytes[0] = transform(fileBytes[0], rotors)
-					outputData.Write(fileBytes)
+					outputFile.Write(fileBytes)
 				} else {
 					break
 				}
@@ -34,7 +46,9 @@ func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) {
 	}
 	if err != nil {
 		fmt.Println("File error: ", err)
+		return false
 	}
+	return true
 }
 
 func transform(inByte byte, rotors []rotor.Rotor) byte {
@@ -56,26 +70,35 @@ func transform(inByte byte, rotors []rotor.Rotor) byte {
 		}
 	}
 
-	spinRotors(rotors)
+	rotor.SpinRotors(rotors)
 	return byte(outSlot)
 }
 
-func spinRotors(rotors []rotor.Rotor) {
-	rotorIndex := 0
-	rotors[rotorIndex].IncrementCurrent()
-	rotors[rotorIndex].Rotate()
-
-	for rotors[rotorIndex].Current == rotors[rotorIndex].Notch && rotorIndex < len(rotors)-1 {
-		rotorIndex++
-		rotors[rotorIndex].IncrementCurrent()
-		rotors[rotorIndex].Rotate()
+func getOutputFileName(inputFileName string, inputFile *os.File, rotors []rotor.Rotor, parameters util.Parameters) string {
+	if parameters.EncryptFilename {
+		uuidWithHyphen := uuid.New()
+		return strings.Replace(uuidWithHyphen.String(), "-", "", -1)
+	} else if parameters.DecryptFilename {
+		var buffer bytes.Buffer
+		fileBytes := make([]byte, 1)
+		for {
+			n, _ := inputFile.Read(fileBytes)
+			if n > 0 {
+				fileBytes[0] = transform(fileBytes[0], rotors)
+				if fileBytes[0] != '\x00' {
+					buffer.WriteByte(fileBytes[0])
+				} else {
+					return buffer.String()
+				}
+			} else {
+				panic(errors.New("could not determine output file name"))
+			}
+		}
+	} else {
+		amgIndex := strings.Index(inputFileName, ".amg")
+		if amgIndex == -1 {
+			return inputFileName + ".amg"
+		}
+		return inputFileName[:amgIndex]
 	}
-}
-
-func getOutputFileName(inputFileName string) string {
-	amgIndex := strings.Index(inputFileName, ".amg")
-	if amgIndex == -1 {
-		return inputFileName + ".amg"
-	}
-	return inputFileName[:amgIndex]
 }

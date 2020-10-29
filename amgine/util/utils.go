@@ -17,10 +17,12 @@ type RotorsConfig struct {
 }
 
 type Parameters struct {
-	ConfigFile string
-	RotorStore string
-	Command    string
-	Target     string
+	ConfigFile      string
+	RotorStore      string
+	Command         string
+	Target          string
+	EncryptFilename bool
+	DecryptFilename bool
 }
 
 func (c AppConfig) String() string {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"time"
 )
 
 func getParameters() (util.Parameters, error) {
@@ -23,7 +24,16 @@ func getParameters() (util.Parameters, error) {
 				index++
 				parameters.RotorStore = os.Args[index]
 				index++
+			} else if os.Args[index] == "-n" {
+				parameters.EncryptFilename = true
+				index++
+			} else if os.Args[index] == "-N" {
+				parameters.DecryptFilename = true
+				index++
 			}
+		}
+		if parameters.EncryptFilename && parameters.DecryptFilename {
+			return parameters, errors.New("invalid command line")
 		}
 		if len(os.Args) > index {
 			if os.Args[index] == "help" ||
@@ -46,9 +56,12 @@ func getParameters() (util.Parameters, error) {
 	return parameters, errors.New("invalid command line")
 }
 
-func loadConfiguration() util.AppConfig {
-	// TODO: Use override config file (-f switch)
-	configFile, err := os.Open(os.Getenv("AMG_CONFIGFILE"))
+func loadConfiguration(parameters util.Parameters) util.AppConfig {
+	configFileName := os.Getenv("AMG_CONFIGFILE")
+	if len(parameters.ConfigFile) > 0 {
+		configFileName = parameters.ConfigFile
+	}
+	configFile, err := os.Open(configFileName)
 	if err != nil {
 		fmt.Println("Could not open configuration file!")
 		panic(err)
@@ -75,12 +88,14 @@ func createRotors(configuration util.AppConfig, rotorStore rotor.RotorStore) []r
 
 	for i, r := range configuration.Rotors {
 		r1 := rotorStore.Rotors[r.Rid]
-		r2 := rotor.Rotor{r1.Slots, r1.Notch, r1.Current}
+		r2 := rotor.Rotor{r1.Slots, r1.Notch, r.Curr}
+		r2.InitializeRotorPosition()
 		rotors[i] = r2
 	}
 
 	rr1 := rotorStore.ReturnRotors[configuration.ReturnRotor.Rid]
-	rr := rotor.Rotor{rr1.Slots, rr1.Notch, rr1.Current}
+	rr := rotor.Rotor{rr1.Slots, rr1.Notch, configuration.ReturnRotor.Curr}
+	rr.InitializeRotorPosition()
 	rotors[len(rotors)-1] = rr
 
 	return rotors
@@ -100,8 +115,11 @@ func printHelp() {
 		"     -f <optionsfile>  - Makes amgine use the given options file instead of the one\n" +
 		"                         defined by the environment variable AMG_CONFIGFILE.\n" +
 		"     -s <rotorstore>   - Makes amgine use the given file as active rotor store instead\n" +
-		"                         of the one defined by the environment variable AMG_ROTORSTORE.\n\n" +
-		"  Commands:" +
+		"                         of the one defined by the environment variable AMG_ROTORSTORE.\n" +
+		"     -n                - Encrypts also the original file name and includes it in the output file.\n" +
+		"                         Generates an UUID for output file name.\n" +
+		"     -N                - Decrypts the original file name from the input file.\n\n" +
+		"  Commands:\n" +
 		"     help              - Show this help.\n" +
 		"     showconfig        - Show configuration as defined in the given configuration file\n" +
 		"                         or in the one defined by the environment variable AMG_CONFIGFILE.\n" +
@@ -128,7 +146,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	configuration := loadConfiguration()
+	configuration := loadConfiguration(parameters)
 	rotorStore := rotor.LoadRotorStore(parameters)
 	rotors := createRotors(configuration, rotorStore)
 
@@ -143,7 +161,9 @@ func main() {
 		rotor.CreateNewReturnRotor(parameters)
 		fmt.Println("Return rotor created.")
 	} else if parameters.Command == "transform" {
-		TransformFile(parameters, rotors)
-		fmt.Println("Transformation done.")
+		t0 := time.Now()
+		if TransformFile(parameters, rotors) {
+			fmt.Printf("Transformation done %v seconds.\n", time.Since(t0).Seconds())
+		}
 	}
 }

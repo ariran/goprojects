@@ -15,5 +15,11 @@
       "Rid": "R2",
       "Curr": 0
     }
-  ]
+  ],
+  "ReturnRotor":
+  {
+    "Seq": 0,
+    "Rid": "E0",
+    "Curr": 0
+  }
 }

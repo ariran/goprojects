@@ -43,6 +43,13 @@ func (r *Rotor) Rotate() {
 	r.Slots[0] = last
 }
 
+// InitializeRotorPosition ...
+func (r *Rotor) InitializeRotorPosition() {
+	for i := 0; i < r.Current; i++ {
+		r.Rotate()
+	}
+}
+
 func (s RotorStore) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintf("Rotors:\n"))
@@ -176,4 +183,17 @@ func LoadRotorStore(parameters util.Parameters) RotorStore {
 		rotorStore = RotorStore{rotorStoreFileName, rotors, returnRotors}
 	}
 	return rotorStore
+}
+
+// SpinRotors ...
+func SpinRotors(rotors []Rotor) {
+	rotorIndex := 0
+	rotors[rotorIndex].IncrementCurrent()
+	rotors[rotorIndex].Rotate()
+
+	for rotors[rotorIndex].Current == rotors[rotorIndex].Notch && rotorIndex < len(rotors)-1 {
+		rotorIndex++
+		rotors[rotorIndex].IncrementCurrent()
+		rotors[rotorIndex].Rotate()
+	}
 }
