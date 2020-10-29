@@ -6,6 +6,7 @@ import (
 )
 
 type AppConfig struct {
+	ConfigFile  string
 	Rotors      []RotorsConfig
 	ReturnRotor RotorsConfig
 }

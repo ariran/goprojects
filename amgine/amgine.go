@@ -75,6 +75,7 @@ func loadConfiguration(parameters util.Parameters) util.AppConfig {
 		fmt.Println("Could not read configuration!")
 		panic(err)
 	}
+	configuration.ConfigFile = configFileName
 
 	sort.Slice(configuration.Rotors, func(i, j int) bool {
 		return configuration.Rotors[i].Seq < configuration.Rotors[j].Seq
@@ -151,6 +152,8 @@ func main() {
 	rotors := createRotors(configuration, rotorStore)
 
 	if parameters.Command == "showconfig" {
+		fmt.Println("Config file: ", configuration.ConfigFile)
+		fmt.Println("Rotor store: ", rotorStore.FileName)
 		fmt.Println(configuration)
 	} else if parameters.Command == "showstore" {
 		fmt.Println(rotorStore)
