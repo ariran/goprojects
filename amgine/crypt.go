@@ -13,13 +13,18 @@ import (
 )
 
 // TransformFile ...
-func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) bool {
+func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) string {
+	var outputFileName string
 	inputFileName := parameters.Target
 	inputFile, err := os.Open(inputFileName)
 	defer inputFile.Close()
 
 	if err == nil {
-		outputFileName := getOutputFileName(inputFileName, inputFile, rotors, parameters)
+		outputFileName, err = getOutputFileName(inputFileName, inputFile, rotors, parameters)
+		if err != nil {
+			fmt.Println(err)
+			return ""
+		}
 		outputFile, err := os.Create(outputFileName)
 		defer outputFile.Close()
 
@@ -42,13 +47,15 @@ func TransformFile(parameters util.Parameters, rotors []rotor.Rotor) bool {
 					break
 				}
 			}
+		} else {
+			fmt.Println("Transform error.")
+			return ""
 		}
+	} else {
+		fmt.Println("Input file error: ", err)
+		return ""
 	}
-	if err != nil {
-		fmt.Println("File error: ", err)
-		return false
-	}
-	return true
+	return outputFileName
 }
 
 func transform(inByte byte, rotors []rotor.Rotor) byte {
@@ -74,10 +81,10 @@ func transform(inByte byte, rotors []rotor.Rotor) byte {
 	return byte(outSlot)
 }
 
-func getOutputFileName(inputFileName string, inputFile *os.File, rotors []rotor.Rotor, parameters util.Parameters) string {
+func getOutputFileName(inputFileName string, inputFile *os.File, rotors []rotor.Rotor, parameters util.Parameters) (string, error) {
 	if parameters.EncryptFilename {
 		uuidWithHyphen := uuid.New()
-		return strings.Replace(uuidWithHyphen.String(), "-", "", -1)
+		return strings.Replace(uuidWithHyphen.String(), "-", "", -1), nil
 	} else if parameters.DecryptFilename {
 		var buffer bytes.Buffer
 		fileBytes := make([]byte, 1)
@@ -88,17 +95,17 @@ func getOutputFileName(inputFileName string, inputFile *os.File, rotors []rotor.
 				if fileBytes[0] != '\x00' {
 					buffer.WriteByte(fileBytes[0])
 				} else {
-					return buffer.String()
+					return buffer.String(), nil
 				}
 			} else {
-				panic(errors.New("could not determine output file name"))
+				return "", errors.New("could not determine output file name")
 			}
 		}
 	} else {
 		amgIndex := strings.Index(inputFileName, ".amg")
 		if amgIndex == -1 {
-			return inputFileName + ".amg"
+			return inputFileName + ".amg", nil
 		}
-		return inputFileName[:amgIndex]
+		return inputFileName[:amgIndex], nil
 	}
 }

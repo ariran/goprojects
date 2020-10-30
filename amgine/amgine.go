@@ -113,25 +113,27 @@ func printHelp() {
 	helpString := "Amgine encrypts or decrypts the given file.\n\n" +
 		"  Usage: amgine [options] {command} [file]\n\n" +
 		"  Options:\n" +
-		"     -f <optionsfile>  - Makes amgine use the given options file instead of the one\n" +
-		"                         defined by the environment variable AMG_CONFIGFILE.\n" +
-		"     -s <rotorstore>   - Makes amgine use the given file as active rotor store instead\n" +
-		"                         of the one defined by the environment variable AMG_ROTORSTORE.\n" +
-		"     -n                - Encrypts also the original file name and includes it in the output file.\n" +
-		"                         Generates an UUID for output file name.\n" +
-		"     -N                - Decrypts the original file name from the input file.\n\n" +
+		"     -f <optionsfile>  Makes amgine use the given options file instead of the one\n" +
+		"                       defined by the environment variable AMG_CONFIGFILE.\n" +
+		"     -s <rotorstore>   Makes amgine use the given file as active rotor store instead\n" +
+		"                       of the one defined by the environment variable AMG_ROTORSTORE.\n" +
+		"     -n                Encrypts also the original file name and includes it in the output file.\n" +
+		"                       Generates an UUID for output file name.\n" +
+		"     -N                Decrypts the original file name from the input file.\n\n" +
 		"  Commands:\n" +
-		"     help              - Show this help.\n" +
-		"     showconfig        - Show configuration as defined in the given configuration file\n" +
-		"                         or in the one defined by the environment variable AMG_CONFIGFILE.\n" +
-		"     showstore         - Shows the rotors in the currently active rotor store.\n" +
-		"     newrotor          - Creates a new rotor and stores it in the rotor store.\n" +
-		"     newreturnrotor    - Creates a new rotor and stores it in the rotor store.\n" +
-		"     transform <file>  - Encrypts the given file if the file name does not end with .amg.\n" +
-		"                         Decrypts the given file if the file name ends with .amg.\n\n" +
+		"     help              Show this help.\n" +
+		"     showconfig        Show configuration as defined in the given configuration file\n" +
+		"                       or in the one defined by the environment variable AMG_CONFIGFILE.\n" +
+		"     showstore         Shows the rotors in the currently active rotor store.\n" +
+		"     newrotor          Creates a new rotor and stores it in the rotor store.\n" +
+		"     newreturnrotor    Creates a new return rotor and stores it in the rotor store.\n" +
+		"     transform <file>  Encrypts the given file if -n is specified or if the file name\n" +
+		"                       does not end with .amg.\n" +
+		"                       Decrypts the given file if -N is specified or if the file name\n" +
+		"                       ends with .amg.\n\n" +
 		"  Environment variables:\n" +
-		"     AMG_CONFIGFILE    - Specifies the default configuration file.\n" +
-		"     AMG_ROTORSTORE    - Specifies the active rotor store.\n"
+		"     AMG_CONFIGFILE    Specifies the default configuration file.\n" +
+		"     AMG_ROTORSTORE    Specifies the default active rotor store.\n"
 	fmt.Println(helpString)
 }
 
@@ -165,8 +167,9 @@ func main() {
 		fmt.Println("Return rotor created.")
 	} else if parameters.Command == "transform" {
 		t0 := time.Now()
-		if TransformFile(parameters, rotors) {
-			fmt.Printf("Transformation done %v seconds.\n", time.Since(t0).Seconds())
+		outFile := TransformFile(parameters, rotors)
+		if len(outFile) > 0 {
+			fmt.Printf("Transformation done %v seconds. (%v)\n", time.Since(t0).Seconds(), outFile)
 		}
 	}
 }
